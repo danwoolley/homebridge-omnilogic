@@ -16,9 +16,9 @@ export class OmniLogicClient {
   }
 
   /**
-   * Fetch the MSPConfig and return all Group definitions.
+   * Fetch the raw MSPConfig XML from the controller.
    */
-  async getGroups(): Promise<MSPGroup[]> {
+  async getConfig(): Promise<string> {
     const payload = buildGetConfigPayload();
     const response = await this.transport.sendRequest(
       MessageType.REQUEST_CONFIGURATION,
@@ -26,15 +26,15 @@ export class OmniLogicClient {
       true,
     );
     if (!response) {
-      throw new Error('No response from controller for getGroups');
+      throw new Error('No response from controller for getConfig');
     }
-    return parseGroups(response);
+    return response;
   }
 
   /**
-   * Fetch telemetry and return group ON/OFF states.
+   * Fetch the raw telemetry XML from the controller.
    */
-  async getGroupStates(): Promise<TelemetryGroup[]> {
+  async getTelemetry(): Promise<string> {
     const payload = buildGetTelemetryPayload();
     const response = await this.transport.sendRequest(
       MessageType.GET_TELEMETRY,
@@ -42,9 +42,25 @@ export class OmniLogicClient {
       true,
     );
     if (!response) {
-      throw new Error('No response from controller for getGroupStates');
+      throw new Error('No response from controller for getTelemetry');
     }
-    return parseGroupTelemetry(response);
+    return response;
+  }
+
+  /**
+   * Fetch the MSPConfig and return all Group definitions.
+   */
+  async getGroups(): Promise<MSPGroup[]> {
+    const xml = await this.getConfig();
+    return parseGroups(xml);
+  }
+
+  /**
+   * Fetch telemetry and return group ON/OFF states.
+   */
+  async getGroupStates(): Promise<TelemetryGroup[]> {
+    const xml = await this.getTelemetry();
+    return parseGroupTelemetry(xml);
   }
 
   /**

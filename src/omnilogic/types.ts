@@ -67,6 +67,16 @@ export interface TelemetryGroup {
   state: GroupState;
 }
 
+export interface MSPBodyOfWater {
+  systemId: number;
+  name: string;
+}
+
+export interface TelemetryBodyOfWater {
+  systemId: number;
+  waterTemp: number;
+}
+
 export interface LeadMessageInfo {
   sourceOpId: number;
   msgSize: number;
