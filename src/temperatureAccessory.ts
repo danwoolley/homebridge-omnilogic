@@ -16,7 +16,7 @@ export class OmniLogicTemperatureAccessory {
     this.accessory.getService(this.platform.Service.AccessoryInformation)!
       .setCharacteristic(this.platform.Characteristic.Manufacturer, 'Hayward')
       .setCharacteristic(this.platform.Characteristic.Model, 'OmniLogic Body of Water')
-      .setCharacteristic(this.platform.Characteristic.SerialNumber, String(body.systemId));
+      .setCharacteristic(this.platform.Characteristic.SerialNumber, `BOW-${body.systemId}`);
 
     // Temperature sensor service
     this.service =
