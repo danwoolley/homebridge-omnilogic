@@ -1,0 +1,33 @@
+{
+  "name": "homebridge-omnilogic",
+  "version": "1.0.0",
+  "description": "Homebridge plugin for Hayward OmniLogic pool/spa controllers (local UDP)",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "homebridge-plugin",
+    "homebridge",
+    "hayward",
+    "omnilogic",
+    "pool",
+    "spa"
+  ],
+  "engines": {
+    "homebridge": "^1.6.0 || ^2.0.0",
+    "node": "^18.17.0 || ^20.9.0 || ^22"
+  },
+  "dependencies": {
+    "fast-xml-parser": "^4.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "homebridge": "^1.8.0",
+    "typescript": "^5.3.0"
+  },
+  "homepage": "https://github.com/danwoolley/homebridge-omnilogic",
+  "license": "MIT"
+}

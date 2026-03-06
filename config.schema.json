@@ -1,0 +1,28 @@
+{
+  "pluginAlias": "OmniLogic",
+  "pluginType": "platform",
+  "singular": true,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "title": "Name",
+        "type": "string",
+        "default": "OmniLogic"
+      },
+      "host": {
+        "title": "Controller IP Address",
+        "type": "string",
+        "required": true,
+        "description": "IP address of your OmniLogic controller on the local network"
+      },
+      "pollingInterval": {
+        "title": "Polling Interval (seconds)",
+        "type": "integer",
+        "default": 30,
+        "minimum": 5,
+        "description": "How often to poll the controller for state updates"
+      }
+    }
+  }
+}
