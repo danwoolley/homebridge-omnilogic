@@ -1,5 +1,5 @@
 import { XMLParser, XMLBuilder } from 'fast-xml-parser';
-import { MSPGroup, TelemetryGroup, GroupState, LeadMessageInfo } from './types';
+import { MSPGroup, TelemetryGroup, GroupState, MSPBodyOfWater, TelemetryBodyOfWater, LeadMessageInfo } from './types';
 
 const parserOptions = {
   ignoreAttributes: false,
@@ -102,6 +102,50 @@ export function parseGroupTelemetry(telemetryXml: string): TelemetryGroup[] {
   return groupList.map((g: Record<string, unknown>) => ({
     systemId: Number(g['@_systemId']),
     state: Number(g['@_groupState']) as GroupState,
+  }));
+}
+
+/**
+ * Parse MSPConfig XML to extract Body-of-water definitions from Backyard.
+ */
+export function parseBodiesOfWater(mspConfigXml: string): MSPBodyOfWater[] {
+  const parsed = parser.parse(mspConfigXml);
+  const backyard = parsed?.MSPConfig?.Backyard;
+  if (!backyard) {
+    return [];
+  }
+
+  const bodies = backyard['Body-of-water'];
+  if (!bodies) {
+    return [];
+  }
+
+  const bodyList = Array.isArray(bodies) ? bodies : [bodies];
+  return bodyList.map((b: Record<string, unknown>) => ({
+    systemId: Number(b['System-Id']),
+    name: String(b['Name'] ?? `Body of Water ${b['System-Id']}`),
+  }));
+}
+
+/**
+ * Parse telemetry XML to extract BodyOfWater water temperatures.
+ */
+export function parseBodyOfWaterTelemetry(telemetryXml: string): TelemetryBodyOfWater[] {
+  const parsed = parser.parse(telemetryXml);
+  const status = parsed?.STATUS;
+  if (!status) {
+    return [];
+  }
+
+  const bodies = status.BodyOfWater;
+  if (!bodies) {
+    return [];
+  }
+
+  const bodyList = Array.isArray(bodies) ? bodies : [bodies];
+  return bodyList.map((b: Record<string, unknown>) => ({
+    systemId: Number(b['@_systemId']),
+    waterTemp: Number(b['@_waterTemp']),
   }));
 }
 
