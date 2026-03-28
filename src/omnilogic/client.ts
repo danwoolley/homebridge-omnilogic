@@ -4,6 +4,7 @@ import {
   buildGetConfigPayload,
   buildGetTelemetryPayload,
   buildRunGroupCmdPayload,
+  buildSetEquipmentPayload,
   parseGroups,
   parseGroupTelemetry,
 } from './xml';
@@ -74,6 +75,15 @@ export class OmniLogicClient {
       payload,
       false,
     );
+  }
+
+  /**
+   * Turn a ColorLogic light ON or OFF.
+   * Fire-and-forget — no response expected.
+   */
+  async setLightState(bowId: number, equipmentId: number, on: boolean): Promise<void> {
+    const payload = buildSetEquipmentPayload(bowId, equipmentId, on);
+    await this.transport.sendRequest(MessageType.SET_EQUIPMENT, payload, false);
   }
 
   close(): void {

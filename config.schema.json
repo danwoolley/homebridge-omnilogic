@@ -14,7 +14,8 @@
         "title": "Controller IP Address",
         "type": "string",
         "required": true,
-        "description": "IP address of your OmniLogic controller on the local network"
+        "description": "IP address of your OmniLogic controller on the local network",
+        "format": "ipv4"
       },
       "pollingInterval": {
         "title": "Polling Interval (seconds)",

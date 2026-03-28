@@ -77,6 +77,17 @@ export interface TelemetryBodyOfWater {
   waterTemp: number;
 }
 
+export interface MSPLight {
+  systemId: number;
+  name: string;
+  bowSystemId: number;
+}
+
+export interface TelemetryLight {
+  systemId: number;
+  lightState: number;
+}
+
 export interface LeadMessageInfo {
   sourceOpId: number;
   msgSize: number;
