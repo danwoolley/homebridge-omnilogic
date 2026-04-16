@@ -10,10 +10,11 @@ import {
 
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
 import { OmniLogicClient } from './omnilogic/client';
-import { GroupState, MSPGroup, MSPBodyOfWater } from './omnilogic/types';
-import { parseGroups, parseBodiesOfWater, parseGroupTelemetry, parseBodyOfWaterTelemetry } from './omnilogic/xml';
+import { GroupState, MSPGroup, MSPBodyOfWater, MSPLight, TelemetryLight } from './omnilogic/types';
+import { parseGroups, parseBodiesOfWater, parseLights, parseGroupTelemetry, parseBodyOfWaterTelemetry, parseLightTelemetry } from './omnilogic/xml';
 import { OmniLogicThemeAccessory } from './platformAccessory';
 import { OmniLogicTemperatureAccessory } from './temperatureAccessory';
+import { OmniLogicLightAccessory } from './lightAccessory';
 
 interface OmniLogicConfig extends PlatformConfig {
   host: string;
@@ -27,6 +28,7 @@ export class OmniLogicPlatform implements DynamicPlatformPlugin {
   private readonly accessories: Map<string, PlatformAccessory> = new Map();
   private readonly themeAccessories: Map<string, OmniLogicThemeAccessory> = new Map();
   private readonly tempAccessories: Map<string, OmniLogicTemperatureAccessory> = new Map();
+  private readonly lightAccessories: Map<string, OmniLogicLightAccessory> = new Map();
   private client: OmniLogicClient | null = null;
   private pollingTimer: ReturnType<typeof setInterval> | undefined;
   private readonly config: OmniLogicConfig;
@@ -80,7 +82,8 @@ export class OmniLogicPlatform implements DynamicPlatformPlugin {
 
     const groups = parseGroups(configXml);
     const bodies = parseBodiesOfWater(configXml);
-    this.log.info(`Discovered ${groups.length} theme(s) and ${bodies.length} body/bodies of water`);
+    const lights = parseLights(configXml);
+    this.log.info(`Discovered ${groups.length} theme(s), ${bodies.length} body/bodies of water, and ${lights.length} light(s)`);
 
     const discoveredUUIDs = new Set<string>();
 
@@ -130,6 +133,29 @@ export class OmniLogicPlatform implements DynamicPlatformPlugin {
       this.tempAccessories.set(uuid, tempAccessory);
     }
 
+    // Register light accessories for each ColorLogic light
+    for (const light of lights) {
+      const uuid = this.api.hap.uuid.generate(`omnilogic-light-${light.systemId}`);
+      discoveredUUIDs.add(uuid);
+
+      let accessory = this.accessories.get(uuid);
+
+      if (accessory) {
+        this.log.info('Updating existing light accessory:', light.name);
+        accessory.context.light = light;
+        this.api.updatePlatformAccessories([accessory]);
+      } else {
+        this.log.info('Adding new light accessory:', light.name);
+        accessory = new this.api.platformAccessory(light.name, uuid);
+        accessory.context.light = light;
+        this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+        this.accessories.set(uuid, accessory);
+      }
+
+      const lightAccessory = new OmniLogicLightAccessory(this, accessory);
+      this.lightAccessories.set(uuid, lightAccessory);
+    }
+
     // Remove stale accessories no longer on the controller
     for (const [uuid, accessory] of this.accessories) {
       if (!discoveredUUIDs.has(uuid)) {
@@ -138,6 +164,7 @@ export class OmniLogicPlatform implements DynamicPlatformPlugin {
         this.accessories.delete(uuid);
         this.themeAccessories.delete(uuid);
         this.tempAccessories.delete(uuid);
+        this.lightAccessories.delete(uuid);
       }
     }
 
@@ -181,6 +208,21 @@ export class OmniLogicPlatform implements DynamicPlatformPlugin {
       }
     }
 
+    // Update light states
+    const lightStates = parseLightTelemetry(telemetryXml);
+    const lightStateMap = new Map<number, TelemetryLight>();
+    for (const l of lightStates) {
+      lightStateMap.set(l.systemId, l);
+    }
+
+    for (const lightAccessory of this.lightAccessories.values()) {
+      const light: MSPLight = lightAccessory.accessory.context.light;
+      const ls = lightStateMap.get(light.systemId);
+      if (ls !== undefined) {
+        lightAccessory.updateState(ls);
+      }
+    }
+
     // Update body of water temperatures
     const bodyTemps = parseBodyOfWaterTelemetry(telemetryXml);
     const tempMap = new Map<number, number>();
@@ -205,5 +247,19 @@ export class OmniLogicPlatform implements DynamicPlatformPlugin {
       throw new Error('OmniLogic client not initialized');
     }
     await this.client.setGroupState(groupId, on);
+  }
+
+  async setLightState(bowId: number, equipmentId: number, on: boolean, data?: number): Promise<void> {
+    if (!this.client) {
+      throw new Error('OmniLogic client not initialized');
+    }
+    await this.client.setLightState(bowId, equipmentId, on, data);
+  }
+
+  async setLightShow(bowId: number, equipmentId: number, data: number): Promise<void> {
+    if (!this.client) {
+      throw new Error('OmniLogic client not initialized');
+    }
+    await this.client.setLightShow(bowId, equipmentId, data);
   }
 }

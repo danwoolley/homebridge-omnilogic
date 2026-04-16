@@ -1,20 +1,22 @@
 # homebridge-omnilogic
 
-Homebridge plugin for **Hayward OmniLogic** pool/spa controllers. Exposes OmniLogic Themes (called "Groups" in the protocol) as HomeKit Switches, so you can activate preset pool/spa configurations from Apple Home and Siri.
+Homebridge plugin for **Hayward OmniLogic** pool/spa controllers. Exposes OmniLogic equipment as HomeKit accessories so you can control your pool and spa from Apple Home and Siri.
 
 Communicates locally via UDP — no cloud dependency.
 
 ## Features
 
-- Automatic discovery of all Themes/Groups configured on your OmniLogic controller
+- Automatic discovery of all Themes/Groups, Lights, and bodies of water configured on your OmniLogic controller
 - Each Theme appears as a HomeKit Switch (on/off)
+- Each Light appears as a HomeKit Lightbulb (on/off, brightness, color)
+- Each body of water (pool, spa) appears as a HomeKit Temperature Sensor
 - State polling keeps HomeKit in sync with the controller
 - Fully local communication over UDP (port 10444)
 
 ## Requirements
 
 - Homebridge v1.6.0 or later
-- Node.js v18, v20, or v22
+- Node.js v18, v20, or v22 and higher
 - Hayward OmniLogic controller on the same local network
 
 ## Installation
@@ -56,22 +58,49 @@ Your OmniLogic controller should be visible on your local network. You can find 
 - Running `arp -a` and looking for `haywardomnilogic` in the hostname
 - Checking the controller's touchscreen under Settings > Network
 
+## Accessories
+
+### Themes (Switches)
+
+Themes (called Groups in the OmniLogic protocol) are predefined equipment configurations on your controller. Each Theme appears as a HomeKit Switch. Toggling it on or off activates or deactivates the entire preset, which may control pumps, heaters, lights, and other equipment simultaneously.
+
+### Lights (Lightbulbs)
+
+Each ColorLogic light configured on your controller appears as a HomeKit Lightbulb with the following controls:
+
+| HomeKit control | OmniLogic mapping |
+|---|---|
+| On/Off | Turns the light on (resuming last active show) or off |
+| Brightness | Maps to 5 levels: 20%, 40%, 60%, 80%, 100% |
+| Color (Hue/Saturation) | Maps to the nearest solid-color show by hue |
+
+**Available solid-color shows** (selectable via the color wheel):
+Warm Red, Burnt Orange, Orange, Gold, Bright Yellow, Yellow, Emerald, Mint, Aqua Green, Teal, Afternoon Sky, Deep Blue Sea, Royal Blue, Vivid Violet, Sangria, Flamingo, and Cloud White (any desaturated/white color).
+
+Multi-color shows (Voodoo Lounge, Twilight, Tranquility, Gemstone, USA, Mardi Gras, Cool Cabaret) cannot be selected from the color wheel and will display as white when active. Speed is preserved from whatever the controller last reported and is not exposed as a HomeKit control.
+
+### Temperature Sensors
+
+Each body of water (pool, spa) appears as a HomeKit Temperature Sensor showing the current water temperature. Temperature is reported in Celsius internally per the HomeKit spec; the Home app will display it in Fahrenheit or Celsius based on your device's region settings. The sensor shows no reading while the pump is off and no water temperature is available.
+
 ## How It Works
 
-The plugin communicates directly with your OmniLogic controller over UDP on port 10444 using the same local protocol as the Hayward app. On startup it fetches the controller's configuration to discover all Themes, then polls telemetry at the configured interval to keep switch states in sync.
-
-When you toggle a switch in HomeKit, the plugin sends a command to the controller to activate or deactivate that Theme.
+The plugin communicates directly with your OmniLogic controller over UDP on port 10444 using the same local protocol as the Hayward app. On startup it fetches the controller's configuration to discover all Themes, ColorLogic lights, and bodies of water, then polls telemetry at the configured interval to keep all accessory states in sync.
 
 ## Troubleshooting
 
-**Switches show "Not Responding"**
+**Accessories show "Not Responding"**
 - Verify the controller IP is correct and reachable from your Homebridge server
 - Check that UDP port 10444 is not blocked by a firewall
 - Check Homebridge logs for error messages
 
 **No accessories appear**
-- Make sure you have at least one Theme configured on your OmniLogic controller
+- Make sure you have Themes, lights, or bodies of water configured on your OmniLogic controller
 - Check Homebridge logs for discovery errors
+
+**Light state doesn't sync**
+- Ensure your polling interval is short enough (default 30 seconds)
+- Check Homebridge logs for telemetry polling errors
 
 ## License
 
