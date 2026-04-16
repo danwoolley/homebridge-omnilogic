@@ -8,7 +8,7 @@ Communicates locally via UDP — no cloud dependency.
 
 - Automatic discovery of all Themes/Groups, Lights, and bodies of water configured on your OmniLogic controller
 - Each Theme appears as a HomeKit Switch (on/off)
-- Each Light appears as a HomeKit Lightbulb (on/off)
+- Each Light appears as a HomeKit Lightbulb (on/off, brightness, color)
 - Each body of water (pool, spa) appears as a HomeKit Temperature Sensor
 - State polling keeps HomeKit in sync with the controller
 - Fully local communication over UDP (port 10444)
@@ -66,7 +66,18 @@ Themes (called Groups in the OmniLogic protocol) are predefined equipment config
 
 ### Lights (Lightbulbs)
 
-Each ColorLogic light configured on your controller appears as a HomeKit Lightbulb. On/off control is supported. The light will resume its last active show/color when turned on.
+Each ColorLogic light configured on your controller appears as a HomeKit Lightbulb with the following controls:
+
+| HomeKit control | OmniLogic mapping |
+|---|---|
+| On/Off | Turns the light on (resuming last active show) or off |
+| Brightness | Maps to 5 levels: 20%, 40%, 60%, 80%, 100% |
+| Color (Hue/Saturation) | Maps to the nearest solid-color show by hue |
+
+**Available solid-color shows** (selectable via the color wheel):
+Warm Red, Burnt Orange, Orange, Gold, Bright Yellow, Yellow, Emerald, Mint, Aqua Green, Teal, Afternoon Sky, Deep Blue Sea, Royal Blue, Vivid Violet, Sangria, Flamingo, and Cloud White (any desaturated/white color).
+
+Multi-color shows (Voodoo Lounge, Twilight, Tranquility, Gemstone, USA, Mardi Gras, Cool Cabaret) cannot be selected from the color wheel and will display as white when active. Speed is preserved from whatever the controller last reported and is not exposed as a HomeKit control.
 
 ### Temperature Sensors
 

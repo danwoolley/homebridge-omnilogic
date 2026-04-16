@@ -52,12 +52,50 @@ export function buildGetTelemetryPayload(): Buffer {
   return buildRequest('RequestTelemetryData');
 }
 
-export function buildSetEquipmentPayload(bowId: number, equipmentId: number, on: boolean): Buffer {
+/**
+ * Encode ColorLogic show, speed, and brightness into the Data field used by
+ * SetUIEquipmentCmd: brightness (bits 16–23) | speed (bits 8–15) | show (bits 0–7).
+ */
+export function encodeShowData(show: number, speed: number, brightness: number): number {
+  return (brightness << 16) | (speed << 8) | show;
+}
+
+export function buildSetEquipmentPayload(
+  bowId: number,
+  equipmentId: number,
+  on: boolean,
+  data = 0,
+): Buffer {
   return buildRequest('SetUIEquipmentCmd', {
     PoolID: { dataType: 'int', value: bowId },
     EquipmentID: { dataType: 'int', value: equipmentId },
     IsOn: { dataType: 'int', value: on ? 1 : 0 },
-    Data: { dataType: 'int', value: 0 },
+    Data: { dataType: 'int', value: data },
+    IsCountDownTimer: { dataType: 'bool', value: 0 },
+    StartTimeHours: { dataType: 'int', value: 0 },
+    StartTimeMinutes: { dataType: 'int', value: 0 },
+    EndTimeHours: { dataType: 'int', value: 0 },
+    EndTimeMinutes: { dataType: 'int', value: 0 },
+    DaysActive: { dataType: 'int', value: 0 },
+    Recurring: { dataType: 'bool', value: 0 },
+  });
+}
+
+/**
+ * Build a payload to set a ColorLogic light show, speed, and brightness.
+ * Uses TurnOnOffForGroup (the command the controller itself uses for light control),
+ * with the encoded Data field: brightness (bits 16–23) | speed (bits 8–15) | show (bits 0–7).
+ */
+export function buildSetLightShowPayload(
+  bowId: number,
+  equipmentId: number,
+  data: number,
+): Buffer {
+  return buildRequest('TurnOnOffForGroup', {
+    PoolID: { dataType: 'int', value: bowId },
+    EquipmentID: { dataType: 'int', value: equipmentId },
+    Data: { dataType: 'int', value: data },
+    LightState: { dataType: 'int', value: 1 },
     IsCountDownTimer: { dataType: 'bool', value: 0 },
     StartTimeHours: { dataType: 'int', value: 0 },
     StartTimeMinutes: { dataType: 'int', value: 0 },
@@ -223,6 +261,10 @@ export function parseLightTelemetry(telemetryXml: string): TelemetryLight[] {
   return lightList.map((l: Record<string, unknown>) => ({
     systemId: Number(l['@_systemId']),
     lightState: Number(l['@_lightState']),
+    currentShow: Number(l['@_currentShow']),
+    speed: Number(l['@_speed']),
+    brightness: Number(l['@_brightness']),
+    specialEffect: Number(l['@_specialEffect']),
   }));
 }
 

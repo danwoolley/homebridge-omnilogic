@@ -85,7 +85,11 @@ export interface MSPLight {
 
 export interface TelemetryLight {
   systemId: number;
-  lightState: number;
+  lightState: number;  // 0=off; 1=powering off (stage 1); 3=transitioning?; 4=15 seconds of white light; 6=on; 7=powering off (stage 2)
+  currentShow: number;  // 0-26
+  speed: number;  // 0=1/16x; 1=1/8x; 2=1/4x; 3=1/2x; 4=1x; 5=2x; 6=4x; 7=8x; 8=16x
+  brightness: number;  // 0=20%; 1=40%, 2=60%, 3=80%, 4=100%
+  specialEffect: number;  // No known meaning, always 0 in my testing
 }
 
 export interface LeadMessageInfo {

@@ -8,15 +8,48 @@
  *   npx ts-node test-connection.ts
  *
  * Tests:
- *   1. Fetch MSPConfig and list discovered groups/themes and bodies of water
- *   2. Fetch telemetry and show group states (ON/OFF) and water temperatures
+ *   1. Fetch MSPConfig and list discovered groups/themes, bodies of water, and lights
+ *   2. Fetch telemetry and show group states (ON/OFF), water temperatures, and light states
  *   3. Optionally toggle a group (uncomment the section below)
  */
 
 import { readFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
 import { OmniLogicClient } from './src/omnilogic/client';
-import { parseGroups, parseBodiesOfWater, parseGroupTelemetry, parseBodyOfWaterTelemetry } from './src/omnilogic/xml';
+import { parseGroups, parseBodiesOfWater, parseLights, parseGroupTelemetry, parseBodyOfWaterTelemetry, parseLightTelemetry } from './src/omnilogic/xml';
+
+const SHOW_NAMES: Record<number, string> = {
+  0:  'Voodoo Lounge',
+  1:  'Deep Blue Sea',
+  2:  'Royal Blue',
+  3:  'Afternoon Sky',
+  4:  'Aqua Green',
+  5:  'Emerald',
+  6:  'Cloud White',
+  7:  'Warm Red',
+  8:  'Flamingo',
+  9:  'Vivid Violet',
+  10: 'Sangria',
+  11: 'Twilight',
+  12: 'Tranquility',
+  13: 'Gemstone',
+  14: 'USA',
+  15: 'Mardi Gras',
+  16: 'Cool Cabaret',
+  17: 'Yellow',
+  18: 'Orange',
+  19: 'Gold',
+  20: 'Mint',
+  21: 'Teal',
+  22: 'Burnt Orange',
+  23: 'Pure White',
+  24: 'Crisp White',
+  25: 'Warm White',
+  26: 'Bright Yellow',
+};
+
+const BRIGHTNESS_LABELS: Record<number, string> = { 0: '20%', 1: '40%', 2: '60%', 3: '80%', 4: '100%' };
+const SPEED_LABELS: Record<number, string> = { 0: '1/16x', 1: '1/8x', 2: '1/4x', 3: '1/2x', 4: '1x', 5: '2x', 6: '4x', 7: '8x', 8: '16x' };
 
 // Load .env if present
 const envPath = resolve(__dirname, '.env');
@@ -40,7 +73,7 @@ async function main() {
   const client = new OmniLogicClient(host!);
 
   try {
-    // Test 1: Discover groups and bodies of water
+    // Test 1: Discover all accessories from MSPConfig
     console.log(`\nConnecting to OmniLogic controller at ${host}...`);
     console.log('Fetching MSPConfig...\n');
     const configXml = await client.getConfig();
@@ -55,6 +88,12 @@ async function main() {
     console.log(`\nFound ${bodies.length} body/bodies of water:`);
     for (const b of bodies) {
       console.log(`  - [${b.systemId}] ${b.name}`);
+    }
+
+    const lights = parseLights(configXml);
+    console.log(`\nFound ${lights.length} light(s):`);
+    for (const l of lights) {
+      console.log(`  - [${l.systemId}] ${l.name} (BOW: ${l.bowSystemId})`);
     }
 
     // Test 2: Get telemetry
@@ -77,6 +116,18 @@ async function main() {
       const tempF = bt.waterTemp;
       const tempC = tempF === -1 ? 'N/A' : `${((tempF - 32) * 5 / 9).toFixed(1)}°C`;
       console.log(`  - [${bt.systemId}] ${name}: ${tempF}°F (${tempC})`);
+    }
+
+    const lightStates = parseLightTelemetry(telemetryXml);
+    console.log('\nLight states:');
+    for (const ls of lightStates) {
+      const light = lights.find(l => l.systemId === ls.systemId);
+      const name = light?.name ?? `Unknown(${ls.systemId})`;
+      const on = ls.lightState !== 0;
+      const showName = SHOW_NAMES[ls.currentShow] ?? `Unknown(${ls.currentShow})`;
+      const brightness = BRIGHTNESS_LABELS[ls.brightness] ?? `${ls.brightness}`;
+      const speed = SPEED_LABELS[ls.speed] ?? `${ls.speed}`;
+      console.log(`  - [${ls.systemId}] ${name}: ${on ? 'ON' : 'OFF'} (lightState=${ls.lightState}, show=${ls.currentShow} "${showName}", brightness=${brightness}, speed=${speed})`);
     }
 
     // Test 3: Toggle a group (uncomment to test)

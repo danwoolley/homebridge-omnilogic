@@ -10,7 +10,7 @@ import {
 
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
 import { OmniLogicClient } from './omnilogic/client';
-import { GroupState, MSPGroup, MSPBodyOfWater, MSPLight } from './omnilogic/types';
+import { GroupState, MSPGroup, MSPBodyOfWater, MSPLight, TelemetryLight } from './omnilogic/types';
 import { parseGroups, parseBodiesOfWater, parseLights, parseGroupTelemetry, parseBodyOfWaterTelemetry, parseLightTelemetry } from './omnilogic/xml';
 import { OmniLogicThemeAccessory } from './platformAccessory';
 import { OmniLogicTemperatureAccessory } from './temperatureAccessory';
@@ -210,16 +210,16 @@ export class OmniLogicPlatform implements DynamicPlatformPlugin {
 
     // Update light states
     const lightStates = parseLightTelemetry(telemetryXml);
-    const lightStateMap = new Map<number, number>();
+    const lightStateMap = new Map<number, TelemetryLight>();
     for (const l of lightStates) {
-      lightStateMap.set(l.systemId, l.lightState);
+      lightStateMap.set(l.systemId, l);
     }
 
     for (const lightAccessory of this.lightAccessories.values()) {
       const light: MSPLight = lightAccessory.accessory.context.light;
-      const state = lightStateMap.get(light.systemId);
-      if (state !== undefined) {
-        lightAccessory.updateState(state !== 0);
+      const ls = lightStateMap.get(light.systemId);
+      if (ls !== undefined) {
+        lightAccessory.updateState(ls);
       }
     }
 
@@ -249,10 +249,17 @@ export class OmniLogicPlatform implements DynamicPlatformPlugin {
     await this.client.setGroupState(groupId, on);
   }
 
-  async setLightState(bowId: number, equipmentId: number, on: boolean): Promise<void> {
+  async setLightState(bowId: number, equipmentId: number, on: boolean, data?: number): Promise<void> {
     if (!this.client) {
       throw new Error('OmniLogic client not initialized');
     }
-    await this.client.setLightState(bowId, equipmentId, on);
+    await this.client.setLightState(bowId, equipmentId, on, data);
+  }
+
+  async setLightShow(bowId: number, equipmentId: number, data: number): Promise<void> {
+    if (!this.client) {
+      throw new Error('OmniLogic client not initialized');
+    }
+    await this.client.setLightShow(bowId, equipmentId, data);
   }
 }
