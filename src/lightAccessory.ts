@@ -3,6 +3,15 @@ import { OmniLogicPlatform } from './platform';
 import { MSPLight, TelemetryLight } from './omnilogic/types';
 import { encodeShowData } from './omnilogic/xml';
 
+const SHOW_NAMES: Record<number, string> = {
+  0: 'Voodoo Lounge', 1: 'Deep Blue Sea', 2: 'Royal Blue', 3: 'Afternoon Sky',
+  4: 'Aqua Green', 5: 'Emerald', 6: 'Cloud White', 7: 'Warm Red', 8: 'Flamingo',
+  9: 'Vivid Violet', 10: 'Sangria', 11: 'Twilight', 12: 'Tranquility', 13: 'Gemstone',
+  14: 'USA', 15: 'Mardi Gras', 16: 'Cool Cabaret', 17: 'Yellow', 18: 'Orange',
+  19: 'Gold', 20: 'Mint', 21: 'Teal', 22: 'Burnt Orange', 23: 'Pure White',
+  24: 'Crisp White', 25: 'Warm White', 26: 'Bright Yellow',
+};
+
 // Map OmniLogic show number → HomeKit [hue, saturation].
 // Values are RGB->HSV conversion of swatches from: https://haywardomnilogic.com/Module/UserManagement/LightShow.aspx
 // Multi-color shows remain unassigned.
@@ -169,7 +178,7 @@ export class OmniLogicLightAccessory {
     this.hue = hue;
     this.saturation = saturation;
     this.currentShow = hueSatToShow(this.hue, this.saturation);
-    this.platform.log.info(`Setting ${light.name} color show ${this.currentShow} (Hue:${this.hue} Sat:${this.saturation}%)`);
+    this.platform.log.info(`Setting ${light.name} color to ${SHOW_NAMES[this.currentShow] ?? `show ${this.currentShow}`}`);
     try {
       await this.sendShow();
     } catch (err) {
