@@ -17,36 +17,7 @@ import { readFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
 import { OmniLogicClient } from './src/omnilogic/client';
 import { parseGroups, parseBodiesOfWater, parseLights, parseGroupTelemetry, parseBodyOfWaterTelemetry, parseLightTelemetry } from './src/omnilogic/xml';
-
-const SHOW_NAMES: Record<number, string> = {
-  0:  'Voodoo Lounge',
-  1:  'Deep Blue Sea',
-  2:  'Royal Blue',
-  3:  'Afternoon Sky',
-  4:  'Aqua Green',
-  5:  'Emerald',
-  6:  'Cloud White',
-  7:  'Warm Red',
-  8:  'Flamingo',
-  9:  'Vivid Violet',
-  10: 'Sangria',
-  11: 'Twilight',
-  12: 'Tranquility',
-  13: 'Gemstone',
-  14: 'USA',
-  15: 'Mardi Gras',
-  16: 'Cool Cabaret',
-  17: 'Yellow',
-  18: 'Orange',
-  19: 'Gold',
-  20: 'Mint',
-  21: 'Teal',
-  22: 'Burnt Orange',
-  23: 'Pure White',
-  24: 'Crisp White',
-  25: 'Warm White',
-  26: 'Bright Yellow',
-};
+import { SHOW_DATA } from './src/lightAccessory';
 
 const BRIGHTNESS_LABELS: Record<number, string> = { 0: '20%', 1: '40%', 2: '60%', 3: '80%', 4: '100%' };
 const SPEED_LABELS: Record<number, string> = { 0: '1/16x', 1: '1/8x', 2: '1/4x', 3: '1/2x', 4: '1x', 5: '2x', 6: '4x', 7: '8x', 8: '16x' };
@@ -124,7 +95,7 @@ async function main() {
       const light = lights.find(l => l.systemId === ls.systemId);
       const name = light?.name ?? `Unknown(${ls.systemId})`;
       const on = ls.lightState !== 0;
-      const showName = SHOW_NAMES[ls.currentShow] ?? `Unknown(${ls.currentShow})`;
+      const showName = SHOW_DATA[ls.currentShow]?.name ?? `Unknown(${ls.currentShow})`;
       const brightness = BRIGHTNESS_LABELS[ls.brightness] ?? `${ls.brightness}`;
       const speed = SPEED_LABELS[ls.speed] ?? `${ls.speed}`;
       console.log(`  - [${ls.systemId}] ${name}: ${on ? 'ON' : 'OFF'} (lightState=${ls.lightState}, show=${ls.currentShow} "${showName}", brightness=${brightness}, speed=${speed})`);

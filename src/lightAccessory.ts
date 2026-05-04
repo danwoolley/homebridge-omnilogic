@@ -3,53 +3,43 @@ import { OmniLogicPlatform } from './platform';
 import { MSPLight, TelemetryLight } from './omnilogic/types';
 import { encodeShowData } from './omnilogic/xml';
 
-const SHOW_NAMES: Record<number, string> = {
-  0: 'Voodoo Lounge', 1: 'Deep Blue Sea', 2: 'Royal Blue', 3: 'Afternoon Sky',
-  4: 'Aqua Green', 5: 'Emerald', 6: 'Cloud White', 7: 'Warm Red', 8: 'Flamingo',
-  9: 'Vivid Violet', 10: 'Sangria', 11: 'Twilight', 12: 'Tranquility', 13: 'Gemstone',
-  14: 'USA', 15: 'Mardi Gras', 16: 'Cool Cabaret', 17: 'Yellow', 18: 'Orange',
-  19: 'Gold', 20: 'Mint', 21: 'Teal', 22: 'Burnt Orange', 23: 'Pure White',
-  24: 'Crisp White', 25: 'Warm White', 26: 'Bright Yellow',
-};
-
-// Map OmniLogic show number → HomeKit [hue, saturation].
-// Values are RGB->HSV conversion of swatches from: https://haywardomnilogic.com/Module/UserManagement/LightShow.aspx
-// Multi-color shows remain unassigned.
-const SHOW_TO_HUE_SAT: Record<number, [number, number]> = {
-  // 0:  Voodoo Lounge   (not mapped)
-  1:  [222,  65], // Deep Blue Sea
-  2:  [203,  99], // Royal Blue
-  3:  [197, 100], // Afternoon Sky
-  4:  [177,  99], // Aqua Green
-  5:  [147, 100], // Emerald
-  6:  [180,  13], // Cloud White
-  7:  [ 14,  85], // Warm Red
-  8:  [340,  92], // Flamingo
-  9:  [325, 100], // Vivid Violet
-  10: [319,  72], // Sangria
-  // 11: Twilight        (not mapped)
-  // 12: Tranquility     (not mapped)
-  // 13: Gemstone        (not mapped)
-  // 14: USA             (not mapped)
-  // 15: Mardi Gras      (not mapped)
-  // 16: Cool Cabaret    (not mapped)
-  17: [ 60,  60], // Yellow
-  18: [ 39, 100], // Orange
-  19: [ 51, 100], // Gold
-  20: [120,  40], // Mint
-  21: [180, 100], // Teal
-  22: [ 24, 100], // Burnt Orange
-  23: [  0,   0], // Pure White
-  24: [324,   4], // Crisp White
-  25: [ 34,  12], // Warm White
-  26: [ 60, 100], // Bright Yellow
+export const SHOW_DATA: Record<number, { name: string; hueSat?: [number, number] }> = {
+  0: { name: 'Voodoo Lounge' },
+  1: { name: 'Deep Blue Sea', hueSat: [222, 65] },
+  2: { name: 'Royal Blue', hueSat: [203, 99] },
+  3: { name: 'Afternoon Sky', hueSat: [197, 100] },
+  4: { name: 'Aqua Green', hueSat: [177, 99] },
+  5: { name: 'Emerald', hueSat: [147, 100] },
+  6: { name: 'Cloud White', hueSat: [180, 13] },
+  7: { name: 'Warm Red', hueSat: [14, 85] },
+  8: { name: 'Flamingo', hueSat: [340, 92] },
+  9: { name: 'Vivid Violet', hueSat: [325, 100] },
+  10: { name: 'Sangria', hueSat: [319, 72] },
+  11: { name: 'Twilight' },
+  12: { name: 'Tranquility' },
+  13: { name: 'Gemstone' },
+  14: { name: 'USA' },
+  15: { name: 'Mardi Gras' },
+  16: { name: 'Cool Cabaret' },
+  17: { name: 'Yellow', hueSat: [60, 60] },
+  18: { name: 'Orange', hueSat: [39, 100] },
+  19: { name: 'Gold', hueSat: [51, 100] },
+  20: { name: 'Mint', hueSat: [120, 40] },
+  21: { name: 'Teal', hueSat: [180, 100] },
+  22: { name: 'Burnt Orange', hueSat: [24, 100] },
+  23: { name: 'Pure White', hueSat: [0, 0] },
+  24: { name: 'Crisp White', hueSat: [324, 4] },
+  25: { name: 'Warm White', hueSat: [34, 12] },
+  26: { name: 'Bright Yellow', hueSat: [60, 100] },
 };
 
 function hueSatToShow(hue: number, saturation: number): number {
   let bestShow = 6; // default to Cloud White
   let bestDist = Infinity;
-  for (const [showStr, [h, s]] of Object.entries(SHOW_TO_HUE_SAT)) {
+  for (const [showStr, data] of Object.entries(SHOW_DATA)) {
+    if (!data.hueSat) continue;
     const show = parseInt(showStr);
+    const [h, s] = data.hueSat;
     const hueDiff = Math.min(Math.abs(hue - h), 360 - Math.abs(hue - h));  // Account for hue wraparound
     const satDiff = Math.abs(saturation - s);
     const dist = Math.sqrt(hueDiff ** 2 + satDiff ** 2);   // Pythagorean distance in hue-sat space
@@ -178,7 +168,7 @@ export class OmniLogicLightAccessory {
     this.hue = hue;
     this.saturation = saturation;
     this.currentShow = hueSatToShow(this.hue, this.saturation);
-    this.platform.log.info(`Setting ${light.name} color to ${SHOW_NAMES[this.currentShow] ?? `show ${this.currentShow}`}`);
+    this.platform.log.info(`Setting ${light.name} color to ${SHOW_DATA[this.currentShow]?.name ?? `show ${this.currentShow}`}`);
     try {
       await this.sendShow();
     } catch (err) {
@@ -218,7 +208,7 @@ export class OmniLogicLightAccessory {
     this.currentSpeed = ls.speed;
     this.currentBrightnessLevel = ls.brightness;
     this.brightness = omniToHkBrightness(ls.brightness);
-    [this.hue, this.saturation] = SHOW_TO_HUE_SAT[ls.currentShow] ?? [0, 0];
+    [this.hue, this.saturation] = SHOW_DATA[ls.currentShow]?.hueSat ?? [0, 0];
 
     this.service.updateCharacteristic(this.platform.Characteristic.On, this.isOn);
     this.service.updateCharacteristic(this.platform.Characteristic.Brightness, this.brightness);
