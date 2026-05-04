@@ -1,5 +1,5 @@
 import { XMLParser, XMLBuilder } from 'fast-xml-parser';
-import { MSPGroup, TelemetryGroup, GroupState, MSPBodyOfWater, TelemetryBodyOfWater, LeadMessageInfo } from './types';
+import { MSPGroup, TelemetryGroup, GroupState, MSPBodyOfWater, TelemetryBodyOfWater, MSPLight, TelemetryLight, LeadMessageInfo } from './types';
 
 const parserOptions = {
   ignoreAttributes: false,
@@ -50,6 +50,60 @@ export function buildGetConfigPayload(): Buffer {
 
 export function buildGetTelemetryPayload(): Buffer {
   return buildRequest('RequestTelemetryData');
+}
+
+/**
+ * Encode ColorLogic show, speed, and brightness into the Data field used by
+ * SetUIEquipmentCmd: brightness (bits 16–23) | speed (bits 8–15) | show (bits 0–7).
+ */
+export function encodeShowData(show: number, speed: number, brightness: number): number {
+  return (brightness << 16) | (speed << 8) | show;
+}
+
+export function buildSetEquipmentPayload(
+  bowId: number,
+  equipmentId: number,
+  on: boolean,
+  data = 0,
+): Buffer {
+  return buildRequest('SetUIEquipmentCmd', {
+    PoolID: { dataType: 'int', value: bowId },
+    EquipmentID: { dataType: 'int', value: equipmentId },
+    IsOn: { dataType: 'int', value: on ? 1 : 0 },
+    Data: { dataType: 'int', value: data },
+    IsCountDownTimer: { dataType: 'bool', value: 0 },
+    StartTimeHours: { dataType: 'int', value: 0 },
+    StartTimeMinutes: { dataType: 'int', value: 0 },
+    EndTimeHours: { dataType: 'int', value: 0 },
+    EndTimeMinutes: { dataType: 'int', value: 0 },
+    DaysActive: { dataType: 'int', value: 0 },
+    Recurring: { dataType: 'bool', value: 0 },
+  });
+}
+
+/**
+ * Build a payload to set a ColorLogic light show, speed, and brightness.
+ * Uses TurnOnOffForGroup (the command the controller itself uses for light control),
+ * with the encoded Data field: brightness (bits 16–23) | speed (bits 8–15) | show (bits 0–7).
+ */
+export function buildSetLightShowPayload(
+  bowId: number,
+  equipmentId: number,
+  data: number,
+): Buffer {
+  return buildRequest('TurnOnOffForGroup', {
+    PoolID: { dataType: 'int', value: bowId },
+    EquipmentID: { dataType: 'int', value: equipmentId },
+    Data: { dataType: 'int', value: data },
+    LightState: { dataType: 'int', value: 1 },
+    IsCountDownTimer: { dataType: 'bool', value: 0 },
+    StartTimeHours: { dataType: 'int', value: 0 },
+    StartTimeMinutes: { dataType: 'int', value: 0 },
+    EndTimeHours: { dataType: 'int', value: 0 },
+    EndTimeMinutes: { dataType: 'int', value: 0 },
+    DaysActive: { dataType: 'int', value: 0 },
+    Recurring: { dataType: 'bool', value: 0 },
+  });
 }
 
 export function buildRunGroupCmdPayload(groupId: number, on: boolean): Buffer {
@@ -146,6 +200,71 @@ export function parseBodyOfWaterTelemetry(telemetryXml: string): TelemetryBodyOf
   return bodyList.map((b: Record<string, unknown>) => ({
     systemId: Number(b['@_systemId']),
     waterTemp: Number(b['@_waterTemp']),
+  }));
+}
+
+/**
+ * Parse MSPConfig XML to extract ColorLogic-Light definitions from each Body-of-water.
+ */
+export function parseLights(mspConfigXml: string): MSPLight[] {
+  const parsed = parser.parse(mspConfigXml);
+  const backyard = parsed?.MSPConfig?.Backyard;
+  if (!backyard) {
+    return [];
+  }
+
+  const bodies = backyard['Body-of-water'];
+  if (!bodies) {
+    return [];
+  }
+
+  const bodyList = Array.isArray(bodies) ? bodies : [bodies];
+  const lights: MSPLight[] = [];
+
+  for (const body of bodyList) {
+    const bowId = Number(body['System-Id']);
+    const light = body['ColorLogic-Light'];
+    if (!light) {
+      continue;
+    }
+    const lightList = Array.isArray(light) ? light : [light];
+    for (const l of lightList) {
+      lights.push({
+        systemId: Number(l['System-Id']),
+        name: String(l['Name'] ?? `Light ${l['System-Id']}`),
+        bowSystemId: bowId,
+      });
+    }
+  }
+
+  return lights;
+}
+
+/**
+ * Parse telemetry XML to extract ColorLogic-Light on/off states.
+ * Lights appear as flat ColorLogic-Light elements directly under STATUS,
+ * matching the same pattern as Group and BodyOfWater telemetry elements.
+ */
+export function parseLightTelemetry(telemetryXml: string): TelemetryLight[] {
+  const parsed = parser.parse(telemetryXml);
+  const status = parsed?.STATUS;
+  if (!status) {
+    return [];
+  }
+
+  const lights = status['ColorLogic-Light'];
+  if (!lights) {
+    return [];
+  }
+
+  const lightList = Array.isArray(lights) ? lights : [lights];
+  return lightList.map((l: Record<string, unknown>) => ({
+    systemId: Number(l['@_systemId']),
+    lightState: Number(l['@_lightState']),
+    currentShow: Number(l['@_currentShow']),
+    speed: Number(l['@_speed']),
+    brightness: Number(l['@_brightness']),
+    specialEffect: Number(l['@_specialEffect']),
   }));
 }
 

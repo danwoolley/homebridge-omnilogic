@@ -8,15 +8,19 @@
  *   npx ts-node test-connection.ts
  *
  * Tests:
- *   1. Fetch MSPConfig and list discovered groups/themes and bodies of water
- *   2. Fetch telemetry and show group states (ON/OFF) and water temperatures
+ *   1. Fetch MSPConfig and list discovered groups/themes, bodies of water, and lights
+ *   2. Fetch telemetry and show group states (ON/OFF), water temperatures, and light states
  *   3. Optionally toggle a group (uncomment the section below)
  */
 
 import { readFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
 import { OmniLogicClient } from './src/omnilogic/client';
-import { parseGroups, parseBodiesOfWater, parseGroupTelemetry, parseBodyOfWaterTelemetry } from './src/omnilogic/xml';
+import { parseGroups, parseBodiesOfWater, parseLights, parseGroupTelemetry, parseBodyOfWaterTelemetry, parseLightTelemetry } from './src/omnilogic/xml';
+import { SHOW_DATA } from './src/lightAccessory';
+
+const BRIGHTNESS_LABELS: Record<number, string> = { 0: '20%', 1: '40%', 2: '60%', 3: '80%', 4: '100%' };
+const SPEED_LABELS: Record<number, string> = { 0: '1/16x', 1: '1/8x', 2: '1/4x', 3: '1/2x', 4: '1x', 5: '2x', 6: '4x', 7: '8x', 8: '16x' };
 
 // Load .env if present
 const envPath = resolve(__dirname, '.env');
@@ -40,7 +44,7 @@ async function main() {
   const client = new OmniLogicClient(host!);
 
   try {
-    // Test 1: Discover groups and bodies of water
+    // Test 1: Discover all accessories from MSPConfig
     console.log(`\nConnecting to OmniLogic controller at ${host}...`);
     console.log('Fetching MSPConfig...\n');
     const configXml = await client.getConfig();
@@ -55,6 +59,12 @@ async function main() {
     console.log(`\nFound ${bodies.length} body/bodies of water:`);
     for (const b of bodies) {
       console.log(`  - [${b.systemId}] ${b.name}`);
+    }
+
+    const lights = parseLights(configXml);
+    console.log(`\nFound ${lights.length} light(s):`);
+    for (const l of lights) {
+      console.log(`  - [${l.systemId}] ${l.name} (BOW: ${l.bowSystemId})`);
     }
 
     // Test 2: Get telemetry
@@ -77,6 +87,18 @@ async function main() {
       const tempF = bt.waterTemp;
       const tempC = tempF === -1 ? 'N/A' : `${((tempF - 32) * 5 / 9).toFixed(1)}°C`;
       console.log(`  - [${bt.systemId}] ${name}: ${tempF}°F (${tempC})`);
+    }
+
+    const lightStates = parseLightTelemetry(telemetryXml);
+    console.log('\nLight states:');
+    for (const ls of lightStates) {
+      const light = lights.find(l => l.systemId === ls.systemId);
+      const name = light?.name ?? `Unknown(${ls.systemId})`;
+      const on = ls.lightState !== 0;
+      const showName = SHOW_DATA[ls.currentShow]?.name ?? `Unknown(${ls.currentShow})`;
+      const brightness = BRIGHTNESS_LABELS[ls.brightness] ?? `${ls.brightness}`;
+      const speed = SPEED_LABELS[ls.speed] ?? `${ls.speed}`;
+      console.log(`  - [${ls.systemId}] ${name}: ${on ? 'ON' : 'OFF'} (lightState=${ls.lightState}, show=${ls.currentShow} "${showName}", brightness=${brightness}, speed=${speed})`);
     }
 
     // Test 3: Toggle a group (uncomment to test)
